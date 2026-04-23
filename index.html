@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Custom YouTube Viewer</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #1e1e24; color: #fff; }
+        .container { max-width: 800px; margin: auto; }
+        h1 { text-align: center; color: #ff0000; }
+        #search-container { display: flex; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        #search-input { flex-grow: 1; padding: 15px; font-size: 16px; border: none; border-radius: 5px 0 0 5px; background: #2b2b36; color: white; }
+        #search-input:focus { outline: none; }
+        #search-btn { padding: 15px 25px; font-size: 16px; cursor: pointer; border: none; background-color: #ff0000; color: white; border-radius: 0 5px 5px 0; font-weight: bold; transition: background 0.2s; }
+        #search-btn:hover { background-color: #cc0000; }
+        
+        #player-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin-bottom: 20px; display: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        #player-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+        
+        .result-item { display: flex; margin-bottom: 15px; cursor: pointer; background: #2b2b36; padding: 10px; border-radius: 8px; transition: transform 0.2s, background 0.2s; }
+        .result-item:hover { transform: scale(1.02); background: #353542; }
+        .result-item img { width: 160px; height: 90px; object-fit: cover; margin-right: 15px; border-radius: 4px; }
+        .result-item-content h3 { margin: 0 0 5px 0; font-size: 16px; }
+        .result-item-content p { margin: 0; color: #aaa; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>YouTube Viewer</h1>
+        
+        <div id="search-container">
+            <input type="text" id="search-input" placeholder="Search for videos...">
+            <button id="search-btn">Search</button>
+        </div>
+        
+        <div id="player-container">
+            <iframe id="video-player" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // --- IMPORTANT: PUT YOUR API KEY HERE ---
+        const API_KEY = 'AIzaSyDvtWZcdtTYOjhO6AFs476I2KP5qFGGm8k';
+
+        document.getElementById('search-btn').addEventListener('click', searchVideos);
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchVideos();
+        });
+
+        async function searchVideos() {
+            const query = document.getElementById('search-input').value;
+            if (!query) return;
+
+            // Fetch data from YouTube API
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&type=video&key=${API_KEY}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('API Error: ' + data.error.message);
+                    return;
+                }
+
+                displayResults(data.items);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                alert('Failed to connect to YouTube API.');
+            }
+        }
+
+        function displayResults(videos) {
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = ''; // Clear old results
+
+            videos.forEach(video => {
+                const videoId = video.id.videoId;
+                const snippet = video.snippet;
+                
+                // Create a clickable div for each video
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                div.onclick = () => playVideo(videoId);
+                
+                // Parse HTML entities in titles
+                const tempTitle = document.createElement('div');
+                tempTitle.innerHTML = snippet.title;
+                const cleanTitle = tempTitle.innerText;
+
+                div.innerHTML = `
+                    <img src="${snippet.thumbnails.medium.url}" alt="Thumbnail">
+                    <div class="result-item-content">
+                        <h3>${cleanTitle}</h3>
+                        <p>${snippet.channelTitle}</p>
+                    </div>
+                `;
+                resultsContainer.appendChild(div);
+            });
+        }
+
+        function playVideo(videoId) {
+            const playerContainer = document.getElementById('player-container');
+            const player = document.getElementById('video-player');
+            
+            // Load the video into the iframe
+            player.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+            playerContainer.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll back to the player
+        }
+    </script>
+</body>
+</html>
