@@ -9,12 +9,11 @@
         .container { max-width: 800px; margin: auto; }
         h1 { text-align: center; color: #00d2ff; margin-bottom: 5px; }
         
-        /* Server Dropdown Styling */
+        /* Video Player Dropdown Styling */
         #settings-container { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 15px; }
         #settings-container label { font-size: 14px; margin-right: 10px; color: #aaa; }
-        #proxy-select { padding: 8px 12px; border-radius: 5px; background: #2b2b36; color: #00d2ff; border: 1px solid #444; font-size: 14px; cursor: pointer; outline: none; max-width: 250px; }
-        #proxy-select:focus { border-color: #00d2ff; }
-        #proxy-select optgroup { background: #1e1e24; color: #fff; font-style: normal; font-weight: bold; }
+        #player-select { padding: 8px 12px; border-radius: 5px; background: #2b2b36; color: #00d2ff; border: 1px solid #444; font-size: 14px; cursor: pointer; outline: none; max-width: 280px; }
+        #player-select:focus { border-color: #00d2ff; }
 
         #search-container { display: flex; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         #search-input { flex-grow: 1; padding: 15px; font-size: 16px; border: none; border-radius: 5px 0 0 5px; background: #2b2b36; color: white; }
@@ -36,41 +35,16 @@
     <div class="container">
         <h1>Unblocked Video Viewer</h1>
         
-        <!-- Expanded Server Selection Dropdown -->
+        <!-- The dropdown is now ONLY for the Video Player -->
         <div id="settings-container">
-            <label for="proxy-select">Server:</label>
-            <select id="proxy-select">
-                <!-- Primary / Most Popular -->
-                <option value="https://yewtu.be">yewtu.be (Primary)</option>
-                
-                <!-- Americas -->
-                <optgroup label="Americas">
-                    <option value="https://inv.us.projectsegfau.lt">inv.us.projectsegfau.lt (US)</option>
-                    <option value="https://invidious.materialio.us">invidious.materialio.us (US)</option>
-                    <option value="https://inv.thepixora.com">inv.thepixora.com (Canada)</option>
-                    <option value="https://inv.nadeko.net">inv.nadeko.net (Chile)</option>
-                </optgroup>
-                
-                <!-- Europe -->
-                <optgroup label="Europe">
-                    <option value="https://invidious.flokinet.to">invidious.flokinet.to (Iceland)</option>
-                    <option value="https://invidious.privacydev.net">invidious.privacydev.net (France)</option>
-                    <option value="https://yt.artemislena.eu">yt.artemislena.eu (Germany)</option>
-                    <option value="https://invidious.nerdvpn.de">invidious.nerdvpn.de (Germany)</option>
-                    <option value="https://iv.melmac.space">iv.melmac.space (Germany)</option>
-                    <option value="https://invidious.protokolla.fi">invidious.protokolla.fi (Finland)</option>
-                    <option value="https://invidious.private.coffee">invidious.private.coffee (Germany)</option>
-                    <option value="https://invidious.fdn.fr">invidious.fdn.fr (France)</option>
-                    <option value="https://inv.tux.pizza">inv.tux.pizza (EU)</option>
-                </optgroup>
-
-                <!-- Asia / Global -->
-                <optgroup label="Asia & Global">
-                    <option value="https://inv.in.projectsegfau.lt">inv.in.projectsegfau.lt (India)</option>
-                    <option value="https://invidious.jing.rocks">invidious.jing.rocks (Japan)</option>
-                    <option value="https://invidious.privacyredirect.com">invidious.privacyredirect.com (Global)</option>
-                    <option value="https://invidious.incogniweb.net">invidious.incogniweb.net (Global)</option>
-                </optgroup>
+            <label for="player-select">Video Player Server:</label>
+            <select id="player-select">
+                <option value="https://inv.tux.pizza">inv.tux.pizza (Europe - Fast)</option>
+                <option value="https://invidious.nerdvpn.de">invidious.nerdvpn.de (Europe)</option>
+                <option value="https://invidious.flokinet.to">invidious.flokinet.to (Europe)</option>
+                <option value="https://yt.artemislena.eu">yt.artemislena.eu (Europe)</option>
+                <option value="https://vid.puffyan.us">vid.puffyan.us (US / Global)</option>
+                <option value="https://yewtu.be">yewtu.be (Global)</option>
             </select>
         </div>
         
@@ -87,10 +61,18 @@
     </div>
 
     <script>
-        // Helper function to get the currently selected proxy server
-        function getProxyUrl() {
-            // Removes any trailing slashes just in case, ensuring clean URLs
-            return document.getElementById('proxy-select').value.replace(/\/$/, "");
+        // These are headless Piped APIs. They are built for developers. 
+        // No CORS errors, No Cloudflare Bot Checks!
+        const searchApis =[
+            "https://pipedapi.kavin.rocks",
+            "https://pipedapi.lunar.icu",
+            "https://pipedapi.smnz.de",
+            "https://piped-api.garudalinux.org"
+        ];
+
+        // Helper to get the Video Player choice
+        function getPlayerUrl() {
+            return document.getElementById('player-select').value.replace(/\/$/, "");
         }
 
         document.getElementById('search-btn').addEventListener('click', searchVideos);
@@ -102,52 +84,72 @@
             const query = document.getElementById('search-input').value;
             if (!query) return;
 
-            const proxyUrl = getProxyUrl(); 
-            const url = `${proxyUrl}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
+            const btn = document.getElementById('search-btn');
+            btn.innerText = "Searching..."; // UI update
             
-            try {
-                const btn = document.getElementById('search-btn');
-                btn.innerText = "Loading...";
-                
-                // Set a 10-second timeout so it doesn't hang forever if a server is broken
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-                
-                const response = await fetch(url, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                
-                const data = await response.json();
-                btn.innerText = "Search"; 
-                
-                if (data.error) {
-                    alert('Server Error: ' + data.error + '\nTry selecting a different server from the dropdown.');
-                    return;
-                }
+            let data = null;
+            let success = false;
 
-                displayResults(data);
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                document.getElementById('search-btn').innerText = "Search";
+            // Auto-Fallback System: Try search servers until one works!
+            for (let i = 0; i < searchApis.length; i++) {
+                const apiUrl = searchApis[i];
+                const url = `${apiUrl}/search?q=${encodeURIComponent(query)}&filter=videos`;
                 
-                if (error.name === 'AbortError') {
-                    alert('The selected server took too long to respond. It might be overloaded. Please select a different server and try again!');
-                } else {
-                    alert('Failed to connect. The selected server might be down or blocked by your network. Please select a different server from the dropdown and try again!');
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000); // Give each server 5 secs
+                    
+                    const response = await fetch(url, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    
+                    if (!response.ok) throw new Error("Status " + response.status);
+                    
+                    data = await response.json();
+                    success = true;
+                    break; // It worked! Break out of the background loop.
+                } catch (error) {
+                    console.warn(`Search API ${apiUrl} failed/blocked. Trying next...`);
                 }
             }
+            
+            btn.innerText = "Search"; 
+            
+            if (!success || !data || !data.items) {
+                alert('All search networks are currently busy. Please wait 30 seconds and try again!');
+                return;
+            }
+
+            displayResults(data.items);
         }
 
-        function displayResults(videos) {
+        function displayResults(items) {
             const resultsContainer = document.getElementById('results');
             resultsContainer.innerHTML = ''; 
-            const proxyUrl = getProxyUrl();
+
+            // Only grab actual videos, no playlists or channels
+            const videos = items.filter(item => item.type === 'stream');
 
             videos.forEach(video => {
-                const videoId = video.videoId;
+                let videoId = "";
+                // Safely grab the YouTube Video ID from the URL string
+                if (video.url && video.url.includes("?v=")) {
+                    videoId = video.url.split('?v=')[1];
+                } else {
+                    return; 
+                }
+
                 const title = video.title;
-                const author = video.author;
+                const author = video.uploaderName;
+                const thumbUrl = video.thumbnail; // Piped safely proxies the thumbnail for us!
                 
-                const thumbUrl = `${proxyUrl}/vi/${videoId}/mqdefault.jpg`;
+                // Make duration look pretty (e.g., "5:03")
+                let durationStr = "";
+                if (video.duration) {
+                    const m = Math.floor(video.duration / 60);
+                    let s = video.duration % 60;
+                    if (s < 10) s = '0' + s;
+                    durationStr = ` • ${m}:${s}`;
+                }
                 
                 const div = document.createElement('div');
                 div.className = 'result-item';
@@ -157,7 +159,7 @@
                     <img src="${thumbUrl}" alt="Thumbnail" onerror="this.src='https://via.placeholder.com/160x90/2b2b36/FFFFFF?text=No+Image'">
                     <div class="result-item-content">
                         <h3>${title}</h3>
-                        <p>${author}</p>
+                        <p>${author}${durationStr}</p>
                     </div>
                 `;
                 resultsContainer.appendChild(div);
@@ -167,9 +169,10 @@
         function playVideo(videoId) {
             const playerContainer = document.getElementById('player-container');
             const player = document.getElementById('video-player');
-            const proxyUrl = getProxyUrl();
+            const playerProxyUrl = getPlayerUrl();
             
-            player.src = `${proxyUrl}/embed/${videoId}?autoplay=1`;
+            // The video player iframe is immune to CORS rules!
+            player.src = `${playerProxyUrl}/embed/${videoId}?autoplay=1`;
             playerContainer.style.display = 'block';
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
