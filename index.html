@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Unblocked Proxy Viewer</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #1e1e24; color: #fff; }
+        .container { max-width: 800px; margin: auto; }
+        h1 { text-align: center; color: #00d2ff; margin-bottom: 5px; }
+        
+        /* Server Dropdown Styling */
+        #settings-container { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 15px; }
+        #settings-container label { font-size: 14px; margin-right: 10px; color: #aaa; }
+        #proxy-select { padding: 8px 12px; border-radius: 5px; background: #2b2b36; color: #00d2ff; border: 1px solid #444; font-size: 14px; cursor: pointer; outline: none; max-width: 250px; }
+        #proxy-select:focus { border-color: #00d2ff; }
+        #proxy-select optgroup { background: #1e1e24; color: #fff; font-style: normal; font-weight: bold; }
+
+        #search-container { display: flex; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        #search-input { flex-grow: 1; padding: 15px; font-size: 16px; border: none; border-radius: 5px 0 0 5px; background: #2b2b36; color: white; }
+        #search-input:focus { outline: none; }
+        #search-btn { padding: 15px 25px; font-size: 16px; cursor: pointer; border: none; background-color: #00d2ff; color: #1e1e24; border-radius: 0 5px 5px 0; font-weight: bold; transition: background 0.2s; }
+        #search-btn:hover { background-color: #00a8cc; }
+        
+        #player-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin-bottom: 20px; display: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        #player-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+        
+        .result-item { display: flex; margin-bottom: 15px; cursor: pointer; background: #2b2b36; padding: 10px; border-radius: 8px; transition: transform 0.2s, background 0.2s; }
+        .result-item:hover { transform: scale(1.02); background: #353542; }
+        .result-item img { width: 160px; height: 90px; object-fit: cover; margin-right: 15px; border-radius: 4px; background: #111; }
+        .result-item-content h3 { margin: 0 0 5px 0; font-size: 16px; }
+        .result-item-content p { margin: 0; color: #aaa; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Unblocked Video Viewer</h1>
+        
+        <!-- Expanded Server Selection Dropdown -->
+        <div id="settings-container">
+            <label for="proxy-select">Server:</label>
+            <select id="proxy-select">
+                <!-- Primary / Most Popular -->
+                <option value="https://yewtu.be">yewtu.be (Primary)</option>
+                
+                <!-- Americas -->
+                <optgroup label="Americas">
+                    <option value="https://inv.us.projectsegfau.lt">inv.us.projectsegfau.lt (US)</option>
+                    <option value="https://invidious.materialio.us">invidious.materialio.us (US)</option>
+                    <option value="https://inv.thepixora.com">inv.thepixora.com (Canada)</option>
+                    <option value="https://inv.nadeko.net">inv.nadeko.net (Chile)</option>
+                </optgroup>
+                
+                <!-- Europe -->
+                <optgroup label="Europe">
+                    <option value="https://invidious.flokinet.to">invidious.flokinet.to (Iceland)</option>
+                    <option value="https://invidious.privacydev.net">invidious.privacydev.net (France)</option>
+                    <option value="https://yt.artemislena.eu">yt.artemislena.eu (Germany)</option>
+                    <option value="https://invidious.nerdvpn.de">invidious.nerdvpn.de (Germany)</option>
+                    <option value="https://iv.melmac.space">iv.melmac.space (Germany)</option>
+                    <option value="https://invidious.protokolla.fi">invidious.protokolla.fi (Finland)</option>
+                    <option value="https://invidious.private.coffee">invidious.private.coffee (Germany)</option>
+                    <option value="https://invidious.fdn.fr">invidious.fdn.fr (France)</option>
+                    <option value="https://inv.tux.pizza">inv.tux.pizza (EU)</option>
+                </optgroup>
+
+                <!-- Asia / Global -->
+                <optgroup label="Asia & Global">
+                    <option value="https://inv.in.projectsegfau.lt">inv.in.projectsegfau.lt (India)</option>
+                    <option value="https://invidious.jing.rocks">invidious.jing.rocks (Japan)</option>
+                    <option value="https://invidious.privacyredirect.com">invidious.privacyredirect.com (Global)</option>
+                    <option value="https://invidious.incogniweb.net">invidious.incogniweb.net (Global)</option>
+                </optgroup>
+            </select>
+        </div>
+        
+        <div id="search-container">
+            <input type="text" id="search-input" placeholder="Search for videos...">
+            <button id="search-btn">Search</button>
+        </div>
+        
+        <div id="player-container">
+            <iframe id="video-player" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Helper function to get the currently selected proxy server
+        function getProxyUrl() {
+            // Removes any trailing slashes just in case, ensuring clean URLs
+            return document.getElementById('proxy-select').value.replace(/\/$/, "");
+        }
+
+        document.getElementById('search-btn').addEventListener('click', searchVideos);
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchVideos();
+        });
+
+        async function searchVideos() {
+            const query = document.getElementById('search-input').value;
+            if (!query) return;
+
+            const proxyUrl = getProxyUrl(); 
+            const url = `${proxyUrl}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
+            
+            try {
+                const btn = document.getElementById('search-btn');
+                btn.innerText = "Loading...";
+                
+                // Set a 10-second timeout so it doesn't hang forever if a server is broken
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                const data = await response.json();
+                btn.innerText = "Search"; 
+                
+                if (data.error) {
+                    alert('Server Error: ' + data.error + '\nTry selecting a different server from the dropdown.');
+                    return;
+                }
+
+                displayResults(data);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('search-btn').innerText = "Search";
+                
+                if (error.name === 'AbortError') {
+                    alert('The selected server took too long to respond. It might be overloaded. Please select a different server and try again!');
+                } else {
+                    alert('Failed to connect. The selected server might be down or blocked by your network. Please select a different server from the dropdown and try again!');
+                }
+            }
+        }
+
+        function displayResults(videos) {
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = ''; 
+            const proxyUrl = getProxyUrl();
+
+            videos.forEach(video => {
+                const videoId = video.videoId;
+                const title = video.title;
+                const author = video.author;
+                
+                const thumbUrl = `${proxyUrl}/vi/${videoId}/mqdefault.jpg`;
+                
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                div.onclick = () => playVideo(videoId);
+
+                div.innerHTML = `
+                    <img src="${thumbUrl}" alt="Thumbnail" onerror="this.src='https://via.placeholder.com/160x90/2b2b36/FFFFFF?text=No+Image'">
+                    <div class="result-item-content">
+                        <h3>${title}</h3>
+                        <p>${author}</p>
+                    </div>
+                `;
+                resultsContainer.appendChild(div);
+            });
+        }
+
+        function playVideo(videoId) {
+            const playerContainer = document.getElementById('player-container');
+            const player = document.getElementById('video-player');
+            const proxyUrl = getProxyUrl();
+            
+            player.src = `${proxyUrl}/embed/${videoId}?autoplay=1`;
+            playerContainer.style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
