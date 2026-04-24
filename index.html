@@ -1,208 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Unblocked Proxy Viewer</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #1e1e24; color: #fff; }
-        .container { max-width: 800px; margin: auto; }
-        h1 { text-align: center; color: #00d2ff; margin-bottom: 5px; }
-        
-        #settings-container { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 15px; }
-        #settings-container label { font-size: 14px; margin-right: 10px; color: #aaa; }
-        #player-select { padding: 8px 12px; border-radius: 5px; background: #2b2b36; color: #00d2ff; border: 1px solid #444; font-size: 14px; cursor: pointer; outline: none; max-width: 280px; }
-        #player-select:focus { border-color: #00d2ff; }
-
-        #search-container { display: flex; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        #search-input { flex-grow: 1; padding: 15px; font-size: 16px; border: none; border-radius: 5px 0 0 5px; background: #2b2b36; color: white; }
-        #search-input:focus { outline: none; }
-        #search-btn { padding: 15px 25px; font-size: 16px; cursor: pointer; border: none; background-color: #00d2ff; color: #1e1e24; border-radius: 0 5px 5px 0; font-weight: bold; transition: background 0.2s; }
-        #search-btn:hover { background-color: #00a8cc; }
-        
-        #status-text { text-align: center; color: #888; margin-bottom: 15px; font-size: 13px; min-height: 20px; font-style: italic; }
-        
-        #player-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin-bottom: 20px; display: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        #player-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
-        
-        .result-item { display: flex; margin-bottom: 15px; cursor: pointer; background: #2b2b36; padding: 10px; border-radius: 8px; transition: transform 0.2s, background 0.2s; }
-        .result-item:hover { transform: scale(1.02); background: #353542; }
-        .result-item img { width: 160px; height: 90px; object-fit: cover; margin-right: 15px; border-radius: 4px; background: #111; }
-        .result-item-content h3 { margin: 0 0 5px 0; font-size: 16px; }
-        .result-item-content p { margin: 0; color: #aaa; font-size: 14px; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YT Alternative Client</title>
+  <style>
+    body { font-family: Arial; background:#0f172a; color:white; margin:0; }
+    header { padding:15px; background:#1e293b; display:flex; gap:10px; }
+    input { flex:1; padding:10px; border-radius:8px; border:none; }
+    button { padding:10px 15px; border:none; border-radius:8px; cursor:pointer; }
+    #results { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px; padding:15px; }
+    .card { background:#1e293b; padding:10px; border-radius:10px; }
+    img { width:100%; border-radius:8px; }
+    .title { font-size:14px; margin-top:5px; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Unblocked Video Viewer</h1>
-        
-        <div id="settings-container">
-            <label for="player-select">Video Player Server:</label>
-            <select id="player-select">
-                <option value="https://inv.tux.pizza">inv.tux.pizza (Europe)</option>
-                <option value="https://invidious.flokinet.to">invidious.flokinet.to (Europe)</option>
-                <option value="https://yt.artemislena.eu">yt.artemislena.eu (Europe)</option>
-                <option value="https://iv.melmac.space">iv.melmac.space (Europe)</option>
-                <option value="https://vid.puffyan.us">vid.puffyan.us (US / Global)</option>
-                <option value="https://yewtu.be">yewtu.be (Global)</option>
-            </select>
-        </div>
-        
-        <div id="search-container">
-            <input type="text" id="search-input" placeholder="Search for videos...">
-            <button id="search-btn">Search</button>
-        </div>
-        
-        <div id="status-text"></div>
-        
-        <div id="player-container">
-            <iframe id="video-player" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-        </div>
 
-        <div id="results"></div>
-    </div>
+<header>
+  <input id="search" placeholder="Search videos..." />
+  <button onclick="doSearch()">Search</button>
+</header>
 
-    <script>
-        // List of the most stable API endpoints for searching (Both Piped and Invidious)
-        const searchEndpoints =[
-            "https://pipedapi.kavin.rocks/search?filter=videos&q=",
-            "https://pipedapi.tokhmi.xyz/search?filter=videos&q=",
-            "https://inv.tux.pizza/api/v1/search?type=video&q=",
-            "https://api.piped.privacydev.net/search?filter=videos&q=",
-            "https://vid.puffyan.us/api/v1/search?type=video&q=",
-            "https://invidious.nerdvpn.de/api/v1/search?type=video&q="
-        ];
+<div id="results"></div>
 
-        function getPlayerUrl() {
-            return document.getElementById('player-select').value.replace(/\/$/, "");
-        }
+<script>
+const PROVIDERS = [
+  async (q) => {
+    const r = await fetch(`https://inv.nadeko.net/api/v1/search?q=${encodeURIComponent(q)}`);
+    const d = await r.json();
+    return d.map(v => ({
+      title: v.title,
+      thumb: v.videoThumbnails?.[0]?.url,
+      url: `https://www.youtube.com/watch?v=${v.videoId}`
+    }));
+  },
+  async (q) => {
+    const r = await fetch(`https://invidious.fdn.fr/api/v1/search?q=${encodeURIComponent(q)}`);
+    const d = await r.json();
+    return d.map(v => ({
+      title: v.title,
+      thumb: v.videoThumbnails?.[0]?.url,
+      url: `https://www.youtube.com/watch?v=${v.videoId}`
+    }));
+  },
+  async (q) => {
+    const r = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(q)}&filter=videos`);
+    const d = await r.json();
+    return d.items.map(v => ({
+      title: v.title,
+      thumb: v.thumbnail,
+      url: `https://www.youtube.com/watch?v=${v.id}`
+    }));
+  }
+];
 
-        document.getElementById('search-btn').addEventListener('click', searchVideos);
-        document.getElementById('search-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') searchVideos();
-        });
+async function doSearch() {
+  const q = document.getElementById('search').value;
+  const resultsEl = document.getElementById('results');
+  resultsEl.innerHTML = "Loading...";
 
-        async function searchVideos() {
-            const query = document.getElementById('search-input').value;
-            if (!query) return;
+  for (const provider of PROVIDERS) {
+    try {
+      const data = await provider(q);
+      render(data);
+      return;
+    } catch (e) {
+      console.log("Provider failed", e);
+    }
+  }
 
-            const btn = document.getElementById('search-btn');
-            const statusText = document.getElementById('status-text');
-            btn.innerText = "Searching..."; 
-            
-            let finalResults = null;
+  resultsEl.innerHTML = "All providers failed. Try again later.";
+}
 
-            for (let endpoint of searchEndpoints) {
-                // targetUrl is the direct request we want to make
-                const targetUrl = endpoint + encodeURIComponent(query);
-                const serverName = new URL(targetUrl).hostname;
-                
-                // We define the proxy wrappers securely per-URL to prevent query parameter collisions
-                const proxyTests =[
-                    { name: "Direct connection", fetchUrl: targetUrl },
-                    { name: "CORSProxy.io", fetchUrl: `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}` },
-                    { name: "AllOrigins", fetchUrl: `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}` },
-                    { name: "CodeTabs", fetchUrl: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}` }
-                ];
+function render(videos) {
+  const resultsEl = document.getElementById('results');
+  resultsEl.innerHTML = "";
 
-                for (let proxy of proxyTests) {
-                    statusText.innerText = `Testing ${serverName} via ${proxy.name}...`;
-                    
-                    try {
-                        const controller = new AbortController();
-                        // 8 seconds allows time for proxies and your Kaspersky antivirus to process the data
-                        const timeoutId = setTimeout(() => controller.abort(), 8000); 
-                        
-                        const response = await fetch(proxy.fetchUrl, { signal: controller.signal });
-                        clearTimeout(timeoutId);
-                        
-                        if (!response.ok) throw new Error("Status " + response.status);
-                        
-                        const text = await response.text();
-                        const data = JSON.parse(text); 
-                        
-                        // Normalize the JSON output depending on which API network gave us the answer
-                        let normalized =[];
-                        if (Array.isArray(data)) {
-                            // Data came from an Invidious server
-                            normalized = data.filter(v => v.type === 'video' || v.videoId).map(v => ({
-                                id: v.videoId, title: v.title, author: v.author, duration: v.lengthSeconds
-                            }));
-                        } else if (data.items) {
-                            // Data came from a Piped server
-                            normalized = data.items.filter(v => v.type === 'stream').map(v => ({
-                                id: v.url.split('?v=')[1], title: v.title, author: v.uploaderName, duration: v.duration
-                            }));
-                        }
+  videos.slice(0, 20).forEach(v => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <a href="${v.url}" target="_blank">
+        <img src="${v.thumb}" />
+        <div class="title">${v.title}</div>
+      </a>
+    `;
+    resultsEl.appendChild(div);
+  });
+}
+</script>
 
-                        if (normalized.length > 0) {
-                            finalResults = normalized;
-                            statusText.innerText = `Success! Connected via ${serverName}`;
-                            break; // Stop checking proxies! We got our data.
-                        }
-                    } catch (error) {
-                        // Failed! Log silently to dev console and jump instantly to the next bypass method
-                        console.warn(`[${proxy.name}] ${serverName} failed:`, error.message);
-                    }
-                }
-                if (finalResults) break; // Stop checking servers! We got our data.
-            }
-            
-            btn.innerText = "Search"; 
-            
-            if (!finalResults) {
-                statusText.innerText = "All networks blocked.";
-                alert('All search networks failed. Please try again later.');
-                return;
-            }
-
-            displayResults(finalResults);
-        }
-
-        function displayResults(videos) {
-            const resultsContainer = document.getElementById('results');
-            resultsContainer.innerHTML = ''; 
-            const playerProxyUrl = getPlayerUrl();
-
-            videos.forEach(video => {
-                if (!video.id) return;
-                
-                // We securely proxy the thumbnail images through the Video Player instance you selected
-                const thumbUrl = `${playerProxyUrl}/vi/${video.id}/mqdefault.jpg`;
-                
-                let durationStr = "";
-                if (video.duration) {
-                    const m = Math.floor(video.duration / 60);
-                    let s = video.duration % 60;
-                    if (s < 10) s = '0' + s;
-                    durationStr = ` • ${m}:${s}`;
-                }
-                
-                const div = document.createElement('div');
-                div.className = 'result-item';
-                div.onclick = () => playVideo(video.id);
-
-                div.innerHTML = `
-                    <img src="${thumbUrl}" alt="Thumbnail" onerror="this.src='https://via.placeholder.com/160x90/2b2b36/FFFFFF?text=No+Image'">
-                    <div class="result-item-content">
-                        <h3>${video.title}</h3>
-                        <p>${video.author}${durationStr}</p>
-                    </div>
-                `;
-                resultsContainer.appendChild(div);
-            });
-        }
-
-        function playVideo(videoId) {
-            const playerContainer = document.getElementById('player-container');
-            const player = document.getElementById('video-player');
-            const playerProxyUrl = getPlayerUrl();
-            
-            // The iframe player bypasses network blocks entirely
-            player.src = `${playerProxyUrl}/embed/${videoId}?autoplay=1`;
-            playerContainer.style.display = 'block';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    </script>
 </body>
 </html>
