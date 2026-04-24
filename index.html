@@ -20,7 +20,6 @@
         #search-btn { padding: 15px 25px; font-size: 16px; cursor: pointer; border: none; background-color: #00d2ff; color: #1e1e24; border-radius: 0 5px 5px 0; font-weight: bold; transition: background 0.2s; }
         #search-btn:hover { background-color: #00a8cc; }
         
-        /* New live status text so you can watch it bypass errors */
         #status-text { text-align: center; color: #888; margin-bottom: 15px; font-size: 13px; min-height: 20px; font-style: italic; }
         
         #player-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; background: #000; margin-bottom: 20px; display: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
@@ -42,8 +41,8 @@
             <select id="player-select">
                 <option value="https://inv.tux.pizza">inv.tux.pizza (Europe)</option>
                 <option value="https://invidious.flokinet.to">invidious.flokinet.to (Europe)</option>
-                <option value="https://iv.melmac.space">iv.melmac.space (Europe)</option>
                 <option value="https://yt.artemislena.eu">yt.artemislena.eu (Europe)</option>
+                <option value="https://iv.melmac.space">iv.melmac.space (Europe)</option>
                 <option value="https://vid.puffyan.us">vid.puffyan.us (US / Global)</option>
                 <option value="https://yewtu.be">yewtu.be (Global)</option>
             </select>
@@ -54,7 +53,6 @@
             <button id="search-btn">Search</button>
         </div>
         
-        <!-- Status indicator for the background loops -->
         <div id="status-text"></div>
         
         <div id="player-container">
@@ -65,22 +63,14 @@
     </div>
 
     <script>
-        // Massive list of BOTH Invidious and Piped Search APIs
+        // List of the most stable API endpoints for searching (Both Piped and Invidious)
         const searchEndpoints =[
             "https://pipedapi.kavin.rocks/search?filter=videos&q=",
             "https://pipedapi.tokhmi.xyz/search?filter=videos&q=",
             "https://inv.tux.pizza/api/v1/search?type=video&q=",
             "https://api.piped.privacydev.net/search?filter=videos&q=",
             "https://vid.puffyan.us/api/v1/search?type=video&q=",
-            "https://invidious.nerdvpn.de/api/v1/search?type=video&q=",
-            "https://invidious.flokinet.to/api/v1/search?type=video&q="
-        ];
-
-        // Public CORS Bypass Proxies (This fixes "CORS Missing Allow Origin" and Cloudflare Blocks!)
-        const proxyWrappers =[
-            "", // First, try directly
-            "https://api.allorigins.win/raw?url=", // If direct fails, wrap in AllOrigins
-            "https://api.codetabs.com/v1/proxy?quest=" // If AllOrigins fails, wrap in CodeTabs
+            "https://invidious.nerdvpn.de/api/v1/search?type=video&q="
         ];
 
         function getPlayerUrl() {
@@ -102,39 +92,44 @@
             
             let finalResults = null;
 
-            // Loop 1: Go through every API Server
             for (let endpoint of searchEndpoints) {
+                // targetUrl is the direct request we want to make
                 const targetUrl = endpoint + encodeURIComponent(query);
                 const serverName = new URL(targetUrl).hostname;
                 
-                // Loop 2: Try Direct, then try wrapping it in CORS proxies
-                for (let proxy of proxyWrappers) {
-                    let fetchUrl = targetUrl;
-                    let proxyName = proxy === "" ? "Direct connection" : `Bypass Proxy (${new URL(proxy).hostname})`;
-                    
-                    statusText.innerText = `Testing ${serverName} via ${proxyName}...`;
+                // We define the proxy wrappers securely per-URL to prevent query parameter collisions
+                const proxyTests =[
+                    { name: "Direct connection", fetchUrl: targetUrl },
+                    { name: "CORSProxy.io", fetchUrl: `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}` },
+                    { name: "AllOrigins", fetchUrl: `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}` },
+                    { name: "CodeTabs", fetchUrl: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}` }
+                ];
+
+                for (let proxy of proxyTests) {
+                    statusText.innerText = `Testing ${serverName} via ${proxy.name}...`;
                     
                     try {
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 seconds max per try
+                        // 8 seconds allows time for proxies and your Kaspersky antivirus to process the data
+                        const timeoutId = setTimeout(() => controller.abort(), 8000); 
                         
-                        const response = await fetch(fetchUrl, { signal: controller.signal });
+                        const response = await fetch(proxy.fetchUrl, { signal: controller.signal });
                         clearTimeout(timeoutId);
                         
                         if (!response.ok) throw new Error("Status " + response.status);
                         
                         const text = await response.text();
-                        const data = JSON.parse(text); // If Cloudflare throws an HTML bot check, JSON.parse triggers an error and safely moves to the next server!
+                        const data = JSON.parse(text); 
                         
-                        // We made it! Normalize the data depending on whether it was a Piped or Invidious server
+                        // Normalize the JSON output depending on which API network gave us the answer
                         let normalized =[];
                         if (Array.isArray(data)) {
-                            // Invidious formatting
+                            // Data came from an Invidious server
                             normalized = data.filter(v => v.type === 'video' || v.videoId).map(v => ({
                                 id: v.videoId, title: v.title, author: v.author, duration: v.lengthSeconds
                             }));
                         } else if (data.items) {
-                            // Piped formatting
+                            // Data came from a Piped server
                             normalized = data.items.filter(v => v.type === 'stream').map(v => ({
                                 id: v.url.split('?v=')[1], title: v.title, author: v.uploaderName, duration: v.duration
                             }));
@@ -142,21 +137,22 @@
 
                         if (normalized.length > 0) {
                             finalResults = normalized;
-                            statusText.innerText = `Connection established via ${serverName} !`;
-                            break; // Break out of proxy loop
+                            statusText.innerText = `Success! Connected via ${serverName}`;
+                            break; // Stop checking proxies! We got our data.
                         }
                     } catch (error) {
-                        // Background failure! Silently loop around and try the next combination
+                        // Failed! Log silently to dev console and jump instantly to the next bypass method
+                        console.warn(`[${proxy.name}] ${serverName} failed:`, error.message);
                     }
                 }
-                if (finalResults) break; // Break out of server loop
+                if (finalResults) break; // Stop checking servers! We got our data.
             }
             
             btn.innerText = "Search"; 
             
             if (!finalResults) {
-                statusText.innerText = "";
-                alert('All search networks are currently dead or blocking requests. Please try again later.');
+                statusText.innerText = "All networks blocked.";
+                alert('All search networks failed. Please try again later.');
                 return;
             }
 
@@ -171,8 +167,7 @@
             videos.forEach(video => {
                 if (!video.id) return;
                 
-                // CRITICAL FIX: Piped's own image proxies frequently break.
-                // We now force all image thumbnails to route directly through the Player Server you selected in the dropdown!
+                // We securely proxy the thumbnail images through the Video Player instance you selected
                 const thumbUrl = `${playerProxyUrl}/vi/${video.id}/mqdefault.jpg`;
                 
                 let durationStr = "";
